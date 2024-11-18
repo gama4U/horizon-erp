@@ -1,0 +1,443 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                              String                 @id @default(cuid())
+  firstName                       String
+  lastName                        String
+  email                           String                 @unique
+  password                        String
+  avatar                          String?
+  userType                        UserType
+  permission                      PermissionType?
+  signature                       String?
+  officeBranch                    OfficeBranch?
+  createdAt                       DateTime               @default(now())
+  updatedAt                       DateTime               @updatedAt
+  createdSalesAgreements          SalesAgreement[]       @relation("CreateSalesAgreements")
+  approvedSalesAgreements         SalesAgreement[]       @relation("ApproveSalesAgreements")
+  createdPurchaseRequestOrders    PurchaseRequestOrder[] @relation("CreatePurchaseRequestOrders")
+  approvedPurchaseRequestOrders   PurchaseRequestOrder[] @relation("ApprovePurchaseRequestOrders")
+  preparedTransactions            Transaction[]          @relation("PreparedTransactions")
+  approvedTransactions            Transaction[]          @relation("ApprovedTransactions")
+  memorandums                     Memorandum[]           @relation("PreparedMemorandums")
+  approvedMemorandums             Memorandum[]           @relation("ApprovedMemorandums")
+  preparedDocumentTransactions    DocumentTransaction[]  @relation("PreparedDocumentTransactions")
+  transmittedDocumentTransactions DocumentTransaction[]  @relation("TransmittedDocumentTransactions")
+  recievedDocumentTransactions    DocumentTransaction[]  @relation("RecievedDocumentTransactions")
+  returnedDocumentTransactions    DocumentTransaction[]  @relation("ReturnedDocumentTransactions")
+  createdPackages                 Package[]              @relation("CreatedPackages")
+  approvedPackages                Package[]              @relation("ApprovedPackages")
+  createdSuppliers                Supplier[]             @relation("CreatedSuppliers")
+  approvedSuppliers               Supplier[]             @relation("ApprovedSuppliers")
+  createdClients                  Client[]               @relation("CreatedClients")
+  approvedClients                 Client[]               @relation("ApprovedClients")
+}
+
+model Transaction {
+  id                   String                @id @default(cuid())
+  travelVoucher        Travel[]
+  transactionNumber    String?
+  accommodationVoucher Accommodation[]
+  tourVoucher          Tour[]
+  transportVoucher     Transportation[]
+  salesAgreementId     String?               @unique
+  purchaseOrderId      String?               @unique
+  purchaseOrder        PurchaseRequestOrder? @relation(fields: [purchaseOrderId], references: [id])
+  salesAgreement       SalesAgreement?       @relation(fields: [salesAgreementId], references: [id])
+  creatorId            String?
+  preparedBy           User?                 @relation("PreparedTransactions", fields: [creatorId], references: [id])
+  approverId           String?
+  approver             User?                 @relation("ApprovedTransactions", fields: [approverId], references: [id])
+  clientId             String
+  client               Client                @relation(fields: [clientId], references: [id])
+  createdAt            DateTime?             @default(now())
+  updatedAt            DateTime?             @updatedAt
+}
+
+model SalesAgreement {
+  id                    String                 @id @default(cuid())
+  creatorId             String
+  approverId            String?
+  clientId              String
+  sequenceNumber        Int                    @unique @default(autoincrement())
+  serialNumber          String?
+  currency              Currency?
+  salesAgreementItems   SalesAgreementItem[]
+  purchaseRequestOrders PurchaseRequestOrder[]
+  transaction           Transaction?
+  client                Client                 @relation(fields: [clientId], references: [id])
+  creator               User                   @relation("CreateSalesAgreements", fields: [creatorId], references: [id])
+  approver              User?                  @relation("ApproveSalesAgreements", fields: [approverId], references: [id])
+  createdAt             DateTime?              @default(now())
+  updatedAt             DateTime?              @updatedAt
+}
+
+model SalesAgreementItem {
+  id               String         @id @default(cuid())
+  salesAgreementId String
+  particulars      String[]
+  quantity         Int?
+  unitPrice        Float?
+  total            Float?
+  serviceFee       Float?
+  salesAgreement   SalesAgreement @relation(fields: [salesAgreementId], references: [id])
+  createdAt        DateTime?      @default(now())
+  updatedAt        DateTime?      @updatedAt
+}
+
+model PurchaseRequestOrder {
+  id                 String                     @id @default(cuid())
+  creatorId          String?
+  sequenceNumber     Int                        @unique @default(autoincrement())
+  serialNumber       String?
+  salesAgreementId   String?
+  disbursementType   String?
+  classification     String?
+  classificationType String?
+  other              String?
+  approverId         String?
+  currency           Currency?
+  purchaseOrderItems PurchaseRequestOrderItem[]
+  transaction        Transaction?
+  supplierId         String
+  supplier           Supplier                   @relation(fields: [supplierId], references: [id])
+  creator            User?                      @relation("CreatePurchaseRequestOrders", fields: [creatorId], references: [id])
+  salesAgreement     SalesAgreement?            @relation(fields: [salesAgreementId], references: [id])
+  approver           User?                      @relation("ApprovePurchaseRequestOrders", fields: [approverId], references: [id])
+  createdAt          DateTime?                  @default(now())
+  updatedAt          DateTime?                  @updatedAt
+}
+
+model Memorandum {
+  id               String        @id @default(cuid())
+  memorandumNumber String
+  to               String
+  subject          String
+  contents         String
+  creatorId        String
+  branch           OfficeBranch?
+  creator          User          @relation("PreparedMemorandums", fields: [creatorId], references: [id])
+  approverId       String?
+  approver         User?         @relation("ApprovedMemorandums", fields: [approverId], references: [id])
+
+  createdAt DateTime? @default(now())
+  updatedAt DateTime? @updatedAt
+}
+
+model Client {
+  id                   String                @id @default(cuid())
+  name                 String
+  email                String
+  contactNumber        String
+  documents            String[]
+  clientType           ClientType
+  contactPerson        String?
+  department           String?
+  notes                String?
+  approverId           String?
+  approver             User?                 @relation("ApprovedClients", fields: [approverId], references: [id])
+  creatorId            String?
+  creator              User?                 @relation("CreatedClients", fields: [creatorId], references: [id])
+  officeBranch         OfficeBranch
+  transactions         Transaction[]
+  salesAgreements      SalesAgreement[]
+  documentTransactions DocumentTransaction[]
+  createdAt            DateTime?             @default(now())
+  updatedAt            DateTime?             @updatedAt
+}
+
+model Supplier {
+  id           String       @id @default(cuid())
+  name         String
+  address      String?
+  contact      String?
+  emailAddress String?
+  category     String?
+  notes        String?
+  officeBranch OfficeBranch
+  approverId   String?
+  approver     User?        @relation("ApprovedSuppliers", fields: [approverId], references: [id])
+  creatorId    String?
+  creator      User?        @relation("CreatedSuppliers", fields: [creatorId], references: [id])
+
+  purchaseOrders PurchaseRequestOrder[]
+  createdAt      DateTime?              @default(now())
+  updatedAt      DateTime?              @updatedAt
+}
+
+model PurchaseRequestOrderItem {
+  id                     String               @id @default(cuid())
+  purchaseRequestOrderId String
+  particulars            String[]
+  quantity               Int?
+  unitPrice              Float?
+  total                  Float?
+  purchaseRequestOrder   PurchaseRequestOrder @relation(fields: [purchaseRequestOrderId], references: [id])
+  createdAt              DateTime?            @default(now())
+  updatedAt              DateTime?            @updatedAt
+}
+
+model Travel {
+  id            String       @id @default(cuid())
+  transactionId String
+  type          TravelType
+  airline       Airlines?
+  shipping      Shipping?
+  transaction   Transaction? @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  createdAt     DateTime?    @default(now())
+  updatedAt     DateTime?    @updatedAt
+}
+
+model Airlines {
+  id            String    @id @default(cuid())
+  travelId      String?   @unique
+  name          String
+  code          String
+  dateOfTravel  DateTime?
+  dateOfArrival DateTime?
+  etd           DateTime
+  eta           DateTime
+  origin        String
+  destination   String
+  travel        Travel?   @relation(fields: [travelId], references: [id], onDelete: Cascade)
+  createdAt     DateTime? @default(now())
+  updatedAt     DateTime? @updatedAt
+}
+
+model Shipping {
+  id           String   @id @default(cuid())
+  travelId     String?  @unique
+  name         String
+  voyageNumber String
+  dateOfTravel DateTime
+  origin       String
+  destination  String
+  travel       Travel?  @relation(fields: [travelId], references: [id], onDelete: Cascade)
+}
+
+model DocumentTransaction {
+  id                   String                  @id @default(cuid())
+  dtsNumber            String
+  documents            String[]
+  type                 DocumentTransactionType
+  clientId             String
+  client               Client                  @relation(fields: [clientId], references: [id])
+  preparedById         String
+  preparedBy           User                    @relation("PreparedDocumentTransactions", fields: [preparedById], references: [id])
+  transmittedById      String?
+  transmittedBy        User?                   @relation("TransmittedDocumentTransactions", fields: [transmittedById], references: [id])
+  recievedById         String?
+  recievedBy           User?                   @relation("RecievedDocumentTransactions", fields: [recievedById], references: [id])
+  returnedById         String?
+  returnedBy           User?                   @relation("ReturnedDocumentTransactions", fields: [returnedById], references: [id])
+  recievedByOutsider   String?
+  recievedFromOutsider String?
+  createdAt            DateTime?               @default(now())
+  updatedAt            DateTime?               @updatedAt
+}
+
+enum DocumentTransactionType {
+  TRANSMITTAL
+  RETURN
+  RECIEVE
+}
+
+model Accommodation {
+  id                      String              @id @default(cuid())
+  transactionId           String
+  type                    AccommodationType
+  name                    String
+  rooms                   RoomAccommodation[]
+  numberOfNights          Int?
+  pax                     Int?
+  checkinDate             DateTime
+  checkoutDate            DateTime
+  hotelConfirmationNumber String
+  remarks                 String?
+  transaction             Transaction?        @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  createdAt               DateTime?           @default(now())
+  updatedAt               DateTime?           @updatedAt
+}
+
+model RoomAccommodation {
+  id String @id @default(cuid())
+
+  childrenCount   Int?
+  adultCount      Int?
+  seniorCount     Int?
+  infantCount     Int?
+  accommodationId String?
+  accommodation   Accommodation? @relation(fields: [accommodationId], references: [id])
+}
+
+model Tour {
+  id            String          @id @default(cuid())
+  transactionId String
+  remarks       String?
+  tourGuide     String?
+  tourContact   String?
+  driverName    String?
+  driverContact String?
+  itineraries   TourItinerary[]
+  transaction   Transaction?    @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  createdAt     DateTime?       @default(now())
+  updatedAt     DateTime?       @updatedAt
+}
+
+model TourItinerary {
+  id          String    @id @default(cuid())
+  tourId      String?
+  title       String
+  description String
+  startDate   DateTime
+  endDate     DateTime
+  tour        Tour?     @relation(fields: [tourId], references: [id], onDelete: Cascade)
+  createdAt   DateTime? @default(now())
+  updatedAt   DateTime? @updatedAt
+}
+
+model Transportation {
+  id                 String               @id @default(cuid())
+  transactionId      String
+  driverName         String
+  driverContact      String
+  remarks            String?
+  vehiclePlateNumber String
+  serviceType        TransportServiceType
+  vehicleType        VehicleType
+  itineraries        TransportItinerary[]
+  transaction        Transaction?         @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+}
+
+model TransportItinerary {
+  id          String          @id @default(cuid())
+  transportId String?
+  title       String
+  description String
+  startDate   DateTime
+  endDate     DateTime
+  transport   Transportation? @relation(fields: [transportId], references: [id], onDelete: Cascade)
+  createdAt   DateTime?       @default(now())
+  updatedAt   DateTime?       @updatedAt
+}
+
+model Package {
+  id             String                 @id @default(cuid())
+  creatorId      String
+  approverId     String?
+  packageNumber  String
+  sequenceNumber Int                    @unique @default(autoincrement())
+  name           String
+  inclusions     String[]
+  exclusions     String[]
+  remarks        String
+  officeBranch   OfficeBranch
+  accommodations PackageAccommodation[]
+  airfares       PackageAirfare[]
+  creator        User                   @relation("CreatedPackages", fields: [creatorId], references: [id])
+  approver       User?                  @relation("ApprovedPackages", fields: [approverId], references: [id])
+  createdAt      DateTime?              @default(now())
+  updatedAt      DateTime?              @updatedAt
+}
+
+model PackageAccommodation {
+  id            String    @id @default(cuid())
+  packageId     String
+  category      String
+  options       String[]
+  ratePerPerson Float
+  currency      Currency
+  package       Package   @relation(fields: [packageId], references: [id])
+  createdAt     DateTime? @default(now())
+  updatedAt     DateTime? @updatedAt
+}
+
+model PackageAirfare {
+  id            String    @id @default(cuid())
+  packageId     String
+  airline       String
+  flightDetails String
+  package       Package   @relation(fields: [packageId], references: [id])
+  createdAt     DateTime? @default(now())
+  updatedAt     DateTime? @updatedAt
+}
+
+enum UserType {
+  ADMIN
+  EMPLOYEE
+}
+
+enum PermissionType {
+  SUPER_ADMIN
+  SUPERVISOR
+  ACCOUNTING
+  RESERVATION
+}
+
+enum ClientType {
+  WALK_IN
+  CORPORATE
+  GOVERNMENT
+  GROUP
+  INDIVIDUAL
+}
+
+enum PurchaseRequestOrderType {
+  ACCOMMODATION
+  DOMESTIC_AIRLINE_TICKETING
+  SHIPPING
+  INTERNATIONAL_AIRLINE_TICKETING
+  TRANSPORTATION_RENTAL
+  VISA
+}
+
+enum PaymentType {
+  CASH
+  CHECK
+}
+
+enum TransportServiceType {
+  PUDO
+  WHOLE_DAY
+  HALF_DAY
+  MULTIPLE
+}
+
+enum VehicleType {
+  VAN
+  SUV
+  COASTER
+  SEDAN
+  BUS
+}
+
+enum TravelType {
+  AIRLINES
+  SHIPPING
+}
+
+enum AccommodationType {
+  HOTEL
+  RESORT
+  AIRBNB
+  OTHERS
+}
+
+enum OfficeBranch {
+  CEBU
+  CALBAYOG
+}
+
+enum Currency {
+  USD
+  PHP
+}
